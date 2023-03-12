@@ -24,15 +24,22 @@ public: // Public attributes
     float kd; /// Derivative term gain (careful, usually is not needed because the signal from usually encoders has zero to no noise).
     float N; /// Derivative filter coefficient. Use only when derivative term gain is different from zero. \todo implement PID with filter on the derivative term
 
+    const float MAX_OUTPUT; /// For output clamping and anti-windup
+    float sp_threshold;
+    bool at_sp;
+
 private: // Private attributes
     float last_error;
     float last_output;
     float last_integral;
+    float last_derivative;
 
 public: // Public methods
+    // This PID implementation assumes the output variable can take values from -max_ouput to +max_output. This was designed with the application of controlling dc motors in mind.
+    PIDController(float max_output);
 
-    PIDController(PIDType type, float kp, float kp_bias=0);
-    PIDController(PIDType type, float kp, float kd);
+    void setGains(PIDType type, float *params);
+    void changeSPThreshold(float threshold); // Threshold in the same unit as the process variable
     /**
      * @brief This function creates a new PIDController object that automatically calculates the controller 
      * constants based on the given first-order motor model and desired response parameters.
@@ -44,7 +51,6 @@ public: // Public methods
      * @param tss [s]. Desired settling time for the controlled system.
      * @param OS [%]. Desired overshoot for the controlled system.
      */
-    PIDController(PIDType type, float K, float tau, float tss, float OS);
 
     /**
      * @brief This function creates a new PIDController object that automatically calculates the controller 
@@ -58,16 +64,15 @@ public: // Public methods
      * @param tss [s]. Desired settling time for the controlled system.
      * @param OS [%]. Desired overshoot for the controlled system.
      */
-    PIDController(PIDType type, float K, float zeta, float wn, float tss, float OS);
 
     /**
-     * @brief 
+     * @brief This function should be called every sampling time of the control system
      * 
      * @param error (sp-pv). Difference between desired motor output and actual motor output.
      * @return DC [%]. Duty cycle of the PWM. The magnitude dictates strength of movement, the sign dictates the direction.
      */
     float calculateControl(float error);
-
+    inline float clamp(float value);
     float getError();
 
 private: // Private methods
