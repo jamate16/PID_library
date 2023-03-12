@@ -23,6 +23,7 @@ public: // Public attributes
     float ki; /// Integral term gain.
     float kd; /// Derivative term gain (careful, usually is not needed because the signal from usually encoders has zero to no noise).
     float N; /// Derivative filter coefficient. Use only when derivative term gain is different from zero. \todo implement PID with filter on the derivative term
+    bool has_derivative_filter;
 
     const float MAX_OUTPUT; /// For output clamping and anti-windup
     float sp_threshold;
@@ -38,7 +39,7 @@ public: // Public methods
     // This PID implementation assumes the output variable can take values from -max_ouput to +max_output. This was designed with the application of controlling dc motors in mind.
     PIDController(float max_output);
 
-    void setGains(PIDType type, float *params);
+    void setGains(PIDType type, float *params, float derivative_fc=(1<<32-1));
     void changeSPThreshold(float threshold); // Threshold in the same unit as the process variable
     /**
      * @brief This function creates a new PIDController object that automatically calculates the controller 

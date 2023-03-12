@@ -3,6 +3,7 @@
 PIDController::PIDController(float max_output) : MAX_OUTPUT {max_output} {
     sp_threshold = 0; // Value by default
 
+    has_derivative_filter = false;
     last_error = 0;
     last_integral = 0;
     last_derivative = 0;
@@ -15,7 +16,14 @@ PIDController::PIDController(float max_output) : MAX_OUTPUT {max_output} {
 // PI_manual_tunning params array = [kp, ki]
 // PI_pole_placement_1st_order_plant = [K, tau, tss, OS]
 
-void PIDController::setGains(PIDType type, float *params) {
+void PIDController::setGains(PIDType type, float *params, float derivative_fc) {
+
+    // If value for cut off frequency of derivative term is different that the default, user wants derivative action filter
+    if (derivative_fc != (1<<32-1)) {
+        has_derivative_filter = true;
+        N = derivative_fc/(2 * M_PI);
+    }
+
     switch (type) {
         case PIDType::P_manual_tunning:
             kp = params[0];
@@ -48,6 +56,7 @@ void PIDController::setGains(PIDType type, float *params) {
             // Controller constants based on pole placement
             kp = (2*zeta*wn*params[1] - 1) / params[0];
             ki = params[1]*std::pow(wn, 2) / params[0];
+            kd = 0;
             break;
     }
 }
@@ -66,8 +75,14 @@ float PIDController::calculateControl(float error) {
 
     float proportional_term = kp * error;
     float integral_term = ki * .5f * delta_time * error_sum + last_integral; // Tustin approximation of integral term
-    // float derivative_term = kd / (.5f * delta_time) * error_subtraction - last_derivative; // Tustin approximation of derivative term
-    float derivative_term = kd * N / (.5f * N * delta_time + 1) * error_subtraction - (.5f * N * delta_time - 1) / (.5f * N * delta_time + 1) * last_derivative; // Tustin approximation of derivative term with filter
+    
+    /// Test the difference between this two equations when N = (1<<32-1); bc if they are the same (no memory overflow), then I can leave the equation with filter and explain in a comment the logic behind it (limit when N approaches infinity)
+    if (has_derivative_filter) {
+        float derivative_term = kd * N / (.5f * N * delta_time + 1) * error_subtraction - (.5f * N * delta_time - 1) / (.5f * N * delta_time + 1) * last_derivative; // Tustin approximation of derivative term with filter
+    } else {
+        float derivative_term = kd / (.5f * delta_time) * error_subtraction - last_derivative; // Tustin approximation of derivative term
+    }
+    
 
     // Clamp integral term. This acts as anti-windup, but in the case of a big disturbance the proportional term can be large too. So it's necesary to clamp the output as well. This way once the disturbance is removed the output isn't some biiiig value.
     integral_term = clamp(integral_term);
