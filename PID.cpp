@@ -2,6 +2,9 @@
 
 #include "PID.h"
 
+PIDController::PIDController(PIDType type, float kp, float kp_bias) 
+    : kp {kp}, kp_bias {kp_bias} {} /// \todo implement pole placement part based on control theory
+
 PIDController::PIDController(PIDType type, float K, float tau, float tss, float OS) {
     OS /= 100; // Overshoot is passed in percentage, need it as a decimal
     float zeta = std::sqrt((std::pow(std::log(OS), 2)) / (std::pow(M_PI, 2) + std::pow(std::log(OS), 2)));
@@ -13,7 +16,6 @@ PIDController::PIDController(PIDType type, float K, float tau, float tss, float 
 
     // q0 = -kp;
     // q1 = kp+ki*Ts;
-    ;
 }
 
 float PIDController::calculateControl(float error) {
@@ -21,10 +23,10 @@ float PIDController::calculateControl(float error) {
     absolute_time_t current_time = get_absolute_time();
     float delta_time = absolute_time_diff_us(current_time, last_time) * 1e-6f;
 
-    float output {0};
+    float output {100};
     switch (PID_type) {
         case PIDType::P_pole_placement_closed_loop_plant:
-            output = pCalculateControl(error, delta_time);
+            output = pCalculateControl(error);
             break;
         case PIDType::PI_pole_placement_1st_order_plant:
             output = piCalculateControl(error, delta_time);
@@ -43,7 +45,15 @@ float PIDController::calculateControl(float error) {
     return output;
 }
 
-float PIDController::piCalculateControl(float error, float delta_time) {
+float PIDController::pCalculateControl(float error)
+{
+    float output = kp*error + 15*(error - last_error) / 20e-3;
+
+    return output; /// \todo Implement clamping 'n stuff on the control signal
+}
+
+float PIDController::piCalculateControl(float error, float delta_time)
+{
     /// \todo Separate each term in order to implement anti-windup.
     // Controller transfer function: U(s)/E(s) = kp + ki/s
     static float q0 = -kp;
@@ -52,4 +62,16 @@ float PIDController::piCalculateControl(float error, float delta_time) {
     float output = q1*error + q0*last_error + last_output;
 
     return output;
+}
+
+float PIDController::pidPpCalculateControl(float error, float delta_time) {
+    return 0.0f;
+}
+
+float PIDController::pidMCalculateControl(float error, float delta_time) {
+    return 0.0f;
+}
+
+float PIDController::getError() {
+    return last_error;
 }
