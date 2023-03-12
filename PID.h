@@ -8,6 +8,9 @@ enum class PIDType {
     P_pole_placement_closed_loop_plant,
     PI_pole_placement_1st_order_plant,
     PID_pole_placement_2nd_order_plant,
+    P_manual_tunning,
+    PD_manual_tunning,
+    PI_manual_tunning,
     PID_manual_tunning
 };
 
@@ -15,6 +18,7 @@ class PIDController {
 public: // Public attributes
     PIDType PID_type;
 
+    float kp_bias; /// Bias for P-controller
     float kp; /// Proportional term gain.
     float ki; /// Integral term gain.
     float kd; /// Derivative term gain (careful, usually is not needed because the signal from usually encoders has zero to no noise).
@@ -26,6 +30,9 @@ private: // Private attributes
     float last_integral;
 
 public: // Public methods
+
+    PIDController(PIDType type, float kp, float kp_bias=0);
+    PIDController(PIDType type, float kp, float kd);
     /**
      * @brief This function creates a new PIDController object that automatically calculates the controller 
      * constants based on the given first-order motor model and desired response parameters.
@@ -61,9 +68,11 @@ public: // Public methods
      */
     float calculateControl(float error);
 
+    float getError();
+
 private: // Private methods
 
-    float pCalculateControl(float error, float delta_time);
+    float pCalculateControl(float error);
     float piCalculateControl(float error, float delta_time);
     float pidPpCalculateControl(float error, float delta_time);
     float pidMCalculateControl(float error, float delta_time);
